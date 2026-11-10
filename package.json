@@ -26,6 +26,7 @@
     "@stylexjs/stylex": "^0.19.1",
     "@workos-inc/authkit-nextjs": "4.6.3",
     "next": "16.4.6",
+    "posthog-js": "^1.447.3",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

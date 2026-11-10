@@ -4,6 +4,7 @@ import {useAuth} from '@workos-inc/authkit-nextjs/components';
 import {Avatar} from '@astryxdesign/core/Avatar';
 import {Button} from '@astryxdesign/core/Button';
 import {DropdownMenu} from '@astryxdesign/core/DropdownMenu';
+import {resetIdentity} from '@/lib/analytics';
 
 /** The signed-in person's avatar, with their email and a way to sign out. */
 export function AccountMenu() {
@@ -20,7 +21,15 @@ export function AccountMenu() {
         {
           type: 'section',
           title: user.email,
-          items: [{label: 'Sign out', onClick: () => void signOut({returnTo: `${window.location.origin}/`})}],
+          items: [
+            {
+              label: 'Sign out',
+              onClick: () => {
+                resetIdentity();
+                void signOut({returnTo: `${window.location.origin}/`});
+              },
+            },
+          ],
         },
       ]}
       renderTrigger={props => (

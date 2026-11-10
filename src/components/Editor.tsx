@@ -45,6 +45,7 @@ import {useBuilder} from '@/lib/useBuilder';
 import {useHistory} from '@/lib/useHistory';
 import {BRAND} from '@/lib/brand';
 import {adoptLegacyDraft, draftKeyFor} from '@/lib/draftKey';
+import {FUNNEL, track} from '@/lib/analytics';
 
 type Viewport = 'desktop' | 'tablet' | 'phone';
 type SheetTab = 'ai' | 'sections' | 'theme';
@@ -142,6 +143,15 @@ function StudioEditor({userId}: {userId: string}) {
 
   // Below this width the side panels move into a bottom sheet.
   const isNarrow = useMediaQuery('(max-width: 900px)');
+
+  // Funnel: the studio opened, then (once per visit) the first real change.
+  const trackedEdit = useRef(false);
+  useEffect(() => track(FUNNEL.studioOpened, {from_sample: fromSample}), [fromSample]);
+  useEffect(() => {
+    if (trackedEdit.current || portfolio === opened.current) return;
+    trackedEdit.current = true;
+    track(FUNNEL.portfolioEdited, {from_sample: fromSample});
+  }, [portfolio, fromSample]);
 
   useEffect(() => {
     if (portfolio !== opened.current) hasEdits.current = true;

@@ -17,6 +17,7 @@ import {Miniature} from './Miniature';
 import {PRESETS, SITE_THEME, isDarkOnly, type PresetId, type ThemeSettings} from '@/lib/themes';
 import {SAMPLES, SAMPLE_PORTFOLIO} from '@/lib/samples';
 import {BRAND, PUBLIC_HOST} from '@/lib/brand';
+import {FUNNEL, track} from '@/lib/analytics';
 
 // Page-level styles. Astryx has no prop for marketing-size headlines.
 const pageStyle: CSSProperties = {
@@ -445,6 +446,7 @@ function Footer() {
 
 export function Landing() {
   const isNarrow = useMediaQuery('(max-width: 760px)');
+  useEffect(() => track(FUNNEL.landingViewed), []);
   return (
     <Theme theme={SITE_THEME}>
       <main style={pageStyle}>

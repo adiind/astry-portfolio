@@ -1,6 +1,7 @@
 allowBuilds:
   '@astryxdesign/cli': false
   '@astryxdesign/core': false
+  core-js: false
   sharp: false
   unrs-resolver: false
 minimumReleaseAgeExclude:
