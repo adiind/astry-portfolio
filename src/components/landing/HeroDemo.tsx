@@ -1,30 +1,22 @@
 'use client';
 
-import {useEffect, useMemo, useState, type CSSProperties} from 'react';
-import {VStack, HStack} from '@astryxdesign/core/Layout';
-import {Button} from '@astryxdesign/core/Button';
-import {Card} from '@astryxdesign/core/Card';
-import {Icon} from '@astryxdesign/core/Icon';
-import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
+import {useEffect, useMemo, useState} from 'react';
 import {Theme} from '@astryxdesign/core/theme';
 import {useMediaQuery} from '@astryxdesign/core/hooks';
 import {PauseIcon, PlayIcon} from '@heroicons/react/20/solid';
 import {PortfolioView} from '@/components/PortfolioView';
 import {SAMPLES} from '@/lib/samples';
 import {buildTheme, effectiveMode} from '@/lib/themes';
+import {PUBLIC_HOST} from '@/lib/brand';
 
 const STEP_MS = 4200;
 
 // The full job titles do not fit side by side on a phone.
 const SHORT_LABEL: Record<string, string> = {designer: 'Designer', engineer: 'Engineer', illustrator: 'Illustrator'};
 
-// A fixed-height window onto the portfolio, so the page doesn't jump between people.
-const viewportStyle: CSSProperties = {height: 560, overflow: 'hidden'};
-const frameStyle: CSSProperties = {overflow: 'hidden'};
-// Without this the demo grows as wide as the portfolio's widest word and pokes out of a phone screen.
-const wrapStyle: CSSProperties = {width: '100%', minWidth: 0};
+const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-/** Three finished portfolios, each in its own look. Flips between them on its own. */
+/** Three finished portfolios, each in its own look, inside a chunky browser window. Flips between them on its own. */
 export function HeroDemo() {
   const [index, setIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
@@ -43,37 +35,45 @@ export function HeroDemo() {
   const theme = useMemo(() => buildTheme(sample.portfolio.theme), [sample]);
 
   return (
-    <div style={wrapStyle} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
-      <VStack gap={4} hAlign="center" width="100%">
-        <Card padding={0} variant="transparent" elevation="high" width="100%" maxWidth={960} style={frameStyle}>
-          <Theme theme={theme} mode={effectiveMode(sample.portfolio.theme)}>
-            <div style={viewportStyle} aria-label={`${sample.person}'s portfolio, made with this studio`}>
-              <PortfolioView sections={sample.portfolio.sections} />
-            </div>
-          </Theme>
-        </Card>
-        <HStack gap={2} vAlign="center" hAlign="center" wrap="wrap">
-          <SegmentedControl
-            label="Example portfolio"
-            value={sample.id}
-            onChange={id => {
-              setIndex(SAMPLES.findIndex(s => s.id === id));
+    <div className="pl-demo" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+      <div className="pl-burst pl-mono">Made in the studio</div>
+      <div className="pl-window">
+        <div className="pl-window-bar" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <span className="pl-window-url pl-mono">
+            {PUBLIC_HOST}/{slug(sample.person)}
+          </span>
+        </div>
+        <Theme theme={theme} mode={effectiveMode(sample.portfolio.theme)}>
+          <div className="pl-window-body" role="img" aria-label={`${sample.person}'s portfolio, made with this studio`}>
+            <PortfolioView sections={sample.portfolio.sections} />
+          </div>
+        </Theme>
+      </div>
+      <div className="pl-tabs" role="group" aria-label="Example portfolio">
+        {SAMPLES.map(s => (
+          <button
+            key={s.id}
+            type="button"
+            className="pl-tab"
+            aria-pressed={s.id === sample.id}
+            onClick={() => {
+              setIndex(SAMPLES.findIndex(x => x.id === s.id));
               setIsStopped(true);
             }}>
-            {SAMPLES.map(s => (
-              <SegmentedControlItem key={s.id} value={s.id} label={isNarrow ? (SHORT_LABEL[s.id] ?? s.label) : s.label} />
-            ))}
-          </SegmentedControl>
-          <Button
-            label={isStopped ? 'Play examples' : 'Pause examples'}
-            size="sm"
-            variant="ghost"
-            isIconOnly
-            icon={<Icon icon={isStopped ? PlayIcon : PauseIcon} size="sm" />}
-            onClick={() => setIsStopped(s => !s)}
-          />
-        </HStack>
-      </VStack>
+            {isNarrow ? (SHORT_LABEL[s.id] ?? s.label) : s.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="pl-tab pl-tab--icon"
+          aria-label={isStopped ? 'Play examples' : 'Pause examples'}
+          onClick={() => setIsStopped(s => !s)}>
+          {isStopped ? <PlayIcon aria-hidden="true" /> : <PauseIcon aria-hidden="true" />}
+        </button>
+      </div>
     </div>
   );
 }
