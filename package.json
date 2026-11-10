@@ -6,20 +6,37 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "astryx": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@astryxdesign/core": "0.7.11",
+    "@astryxdesign/theme-butter": "0.7.11",
+    "@astryxdesign/theme-chocolate": "0.7.11",
+    "@astryxdesign/theme-gothic": "0.7.11",
+    "@astryxdesign/theme-matcha": "0.7.11",
+    "@astryxdesign/theme-neutral": "0.7.11",
+    "@astryxdesign/theme-stone": "0.7.11",
+    "@astryxdesign/theme-y2k": "0.7.11",
+    "@dnd-kit/core": "6.3.1",
+    "@dnd-kit/sortable": "10.0.0",
+    "@dnd-kit/utilities": "3.2.2",
+    "@heroicons/react": "^2.2.0",
+    "@stylexjs/stylex": "^0.19.1",
     "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@astryxdesign/cli": "0.7.11",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.1.0"
   },
   "packageManager": "pnpm@11.22.0"
 }
