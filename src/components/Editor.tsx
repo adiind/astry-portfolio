@@ -1,5 +1,6 @@
 'use client';
 
+import {useAuth} from '@workos-inc/authkit-nextjs/components';
 import {useCallback, useEffect, useMemo, useRef, useState, type CSSProperties} from 'react';
 import {
   HStack,
@@ -31,6 +32,7 @@ import {
   PaintBrushIcon,
   QueueListIcon,
 } from '@heroicons/react/24/outline';
+import {AccountMenu} from '@/components/AccountMenu';
 import {BuilderChat} from '@/components/BuilderChat';
 import {PortfolioView} from '@/components/PortfolioView';
 import {SectionsPanel, type SectionsChange} from '@/components/SectionsPanel';
@@ -42,6 +44,7 @@ import {buildTheme, effectiveMode, type ThemeSettings} from '@/lib/themes';
 import {useBuilder} from '@/lib/useBuilder';
 import {useHistory} from '@/lib/useHistory';
 import {BRAND} from '@/lib/brand';
+import {adoptLegacyDraft, draftKeyFor} from '@/lib/draftKey';
 
 type Viewport = 'desktop' | 'tablet' | 'phone';
 type SheetTab = 'ai' | 'sections' | 'theme';
@@ -65,12 +68,12 @@ const sideScrollStyle: CSSProperties = {flex: 1, minHeight: 0, overflowY: 'auto'
 const sheetChatStyle: CSSProperties = {display: 'flex', flexDirection: 'column', height: 'calc(55dvh - 38px)'};
 
 // Restores the last draft from this browser (phase 3 moves this to the database).
-function loadDraft(): Portfolio {
+function loadDraft(storageKey: string): Portfolio {
   try {
     // /studio?sample=engineer opens that finished example (the home page links here).
     const asked = getSample(new URLSearchParams(window.location.search).get('sample'));
     if (asked) return asked.portfolio;
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return SAMPLE_PORTFOLIO;
     const draft = JSON.parse(raw) as Partial<Portfolio>;
     return {
@@ -82,10 +85,55 @@ function loadDraft(): Portfolio {
   }
 }
 
-// Runs only in the browser (see app/page.tsx), so the draft loads before the first paint.
+function ownDraftKey(userId: string): string {
+  try {
+    return adoptLegacyDraft(localStorage, STORAGE_KEY, userId);
+  } catch {
+    return draftKeyFor(STORAGE_KEY, userId);
+  }
+}
+
+function askedForSample(): boolean {
+  try {
+    return getSample(new URLSearchParams(window.location.search).get('sample')) != null;
+  } catch {
+    return false;
+  }
+}
+
+// Waits for the signed-in person to be known, so their own draft loads before the first paint.
 export function Editor() {
-  const history = useHistory<Portfolio>(loadDraft);
+  const {user, loading} = useAuth();
+  // Remembered once known, so a later session re-check does not unmount the studio and lose undo history.
+  const [userId, setUserId] = useState<string | null>(null);
+  if (!loading && user && user.id !== userId) setUserId(user.id);
+
+  if (userId) return <StudioEditor key={userId} userId={userId} />;
+  if (loading) return null;
+  // Without a known person there is no safe place to save a draft, so ask them to sign in again.
+  return (
+    <VStack gap={3} hAlign="center" vAlign="center" style={pageStyle}>
+      <Heading level={2}>Your session ended</Heading>
+      <Button label="Sign in" variant="primary" href="/sign-in" as="a" />
+    </VStack>
+  );
+}
+
+// Runs only in the browser (see app/studio/page.tsx), so the draft loads before the first paint.
+function StudioEditor({userId}: {userId: string}) {
+  // The first signed-in visit adopts the old un-keyed draft as this person's.
+  const [storageKey] = useState(() => ownDraftKey(userId));
+  const [fromSample] = useState(askedForSample);
+  const history = useHistory<Portfolio>(() => loadDraft(storageKey));
   const portfolio = history.present;
+  const opened = useRef(portfolio);
+  // An example that was only looked at must not replace the person's saved draft.
+  const hasEdits = useRef(!fromSample);
+
+  // Drop ?sample= so a reload opens the saved draft, not the untouched example again.
+  useEffect(() => {
+    if (fromSample) window.history.replaceState(null, '', window.location.pathname);
+  }, [fromSample]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewport, setViewport] = useState<Viewport>('desktop');
   const [sheetTab, setSheetTab] = useState<SheetTab>('sections');
@@ -96,12 +144,14 @@ export function Editor() {
   const isNarrow = useMediaQuery('(max-width: 900px)');
 
   useEffect(() => {
+    if (portfolio !== opened.current) hasEdits.current = true;
+    if (!hasEdits.current) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolio));
+      localStorage.setItem(storageKey, JSON.stringify(portfolio));
     } catch {
       // Storage can be blocked (private window). The editor still works.
     }
-  }, [portfolio]);
+  }, [portfolio, storageKey]);
 
   // A selected section that was deleted (or undone away) is no longer selected.
   const activeId = portfolio.sections.some(s => s.id === selectedId) ? selectedId : null;
@@ -135,7 +185,7 @@ export function Editor() {
     (update: (current: Portfolio) => Portfolio) => setHistory(update),
     [setHistory],
   );
-  const builder = useBuilder({getPortfolio, commit: commitBuild});
+  const builder = useBuilder({getPortfolio, commit: commitBuild, userId});
 
   // While the AI is still working, the preview shows its changes so far, so
   // the page builds up in front of you. Hand edits made meanwhile are kept:
@@ -257,6 +307,7 @@ export function Editor() {
               menuWidth={280}
             />
           )}
+          <AccountMenu />
         </HStack>
       </HStack>
     </LayoutHeader>

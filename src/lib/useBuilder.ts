@@ -5,6 +5,7 @@
 
 import {useCallback, useRef, useState} from 'react';
 import {replayCalls, type AppliedCall} from './builderTools';
+import {adoptLegacyDraft, draftKeyFor} from './draftKey';
 import {GeminiError, isStop, listModels, pickModel, runBuilderTurn, type Content, type GeminiModel} from './gemini';
 import type {Portfolio} from './portfolio';
 
@@ -42,6 +43,8 @@ export interface BuilderOptions {
   getPortfolio: () => Portfolio;
   /** Saves a finished message's changes as one undo step. */
   commit: (update: (current: Portfolio) => Portfolio) => void;
+  /** The signed-in person. Their key is kept apart from other people's in this browser. */
+  userId: string;
 }
 
 function read(name: string): string {
@@ -59,9 +62,17 @@ function write(name: string, value: string | null) {
     // Storage can be blocked (private window). The key then lasts until the tab closes.
   }
 }
-function readModels(): GeminiModel[] {
+// A key saved before sign-in existed moves to the first person who signs in.
+function ownStore(name: string, userId: string): string {
   try {
-    const list = JSON.parse(read(MODELS_STORE) || '[]') as GeminiModel[];
+    return adoptLegacyDraft(localStorage, name, userId);
+  } catch {
+    return draftKeyFor(name, userId);
+  }
+}
+function readModels(store: string): GeminiModel[] {
+  try {
+    const list = JSON.parse(read(store) || '[]') as GeminiModel[];
     return Array.isArray(list) ? list.filter(m => typeof m?.id === 'string') : [];
   } catch {
     return [];
@@ -70,10 +81,15 @@ function readModels(): GeminiModel[] {
 
 const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-export function useBuilder({getPortfolio, commit}: BuilderOptions) {
-  const [key, setKey] = useState(() => read(KEY_STORE));
-  const [models, setModels] = useState<GeminiModel[]>(readModels);
-  const [model, setModelState] = useState(() => read(MODEL_STORE));
+export function useBuilder({getPortfolio, commit, userId}: BuilderOptions) {
+  const [stores] = useState(() => ({
+    key: ownStore(KEY_STORE, userId),
+    model: ownStore(MODEL_STORE, userId),
+    models: ownStore(MODELS_STORE, userId),
+  }));
+  const [key, setKey] = useState(() => read(stores.key));
+  const [models, setModels] = useState<GeminiModel[]>(() => readModels(stores.models));
+  const [model, setModelState] = useState(() => read(stores.model));
   const [turns, setTurns] = useState<BuilderTurn[]>([]);
   const [pending, setPending] = useState<PendingBuild | null>(null);
   const [isWorking, setIsWorking] = useState(false);
@@ -89,9 +105,9 @@ export function useBuilder({getPortfolio, commit}: BuilderOptions) {
     try {
       const found = await listModels(candidate);
       const chosen = pickModel(found);
-      write(KEY_STORE, candidate);
-      write(MODELS_STORE, JSON.stringify(found));
-      write(MODEL_STORE, chosen);
+      write(stores.key, candidate);
+      write(stores.models, JSON.stringify(found));
+      write(stores.model, chosen);
       setKey(candidate);
       setModels(found);
       setModelState(chosen);
@@ -99,7 +115,7 @@ export function useBuilder({getPortfolio, commit}: BuilderOptions) {
     } catch (e) {
       return e instanceof GeminiError ? e.message : 'Could not check the key. Try again.';
     }
-  }, []);
+  }, [stores]);
 
   const clear = useCallback(() => {
     stopper.current?.abort();
@@ -109,18 +125,18 @@ export function useBuilder({getPortfolio, commit}: BuilderOptions) {
 
   const removeKey = useCallback(() => {
     clear();
-    write(KEY_STORE, null);
-    write(MODEL_STORE, null);
-    write(MODELS_STORE, null);
+    write(stores.key, null);
+    write(stores.model, null);
+    write(stores.models, null);
     setKey('');
     setModels([]);
     setModelState('');
-  }, [clear]);
+  }, [clear, stores]);
 
   const setModel = useCallback((id: string) => {
-    write(MODEL_STORE, id);
+    write(stores.model, id);
     setModelState(id);
-  }, []);
+  }, [stores]);
 
   const stop = useCallback(() => stopper.current?.abort(), []);
 

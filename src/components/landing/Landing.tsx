@@ -1,5 +1,6 @@
 'use client';
 
+import {useAuth} from '@workos-inc/authkit-nextjs/components';
 import {useEffect, useRef, type CSSProperties, type ReactNode} from 'react';
 import {VStack, HStack} from '@astryxdesign/core/Layout';
 import {Text, Heading} from '@astryxdesign/core/Text';
@@ -95,6 +96,7 @@ function SectionTitle({children}: {children: ReactNode}) {
 }
 
 function Nav({isNarrow}: {isNarrow: boolean}) {
+  const {user, loading} = useAuth();
   return (
     <div style={navStyle}>
       <HStack
@@ -117,7 +119,10 @@ function Nav({isNarrow}: {isNarrow: boolean}) {
             <Button label="FAQ" variant="ghost" size="sm" href="#faq" />
           </HStack>
         )}
-        <Button label="Open the studio" variant="primary" size="sm" href="/studio" />
+        <HStack gap={2} vAlign="center">
+          {!loading && !user && <Button label="Sign in" variant="ghost" size="sm" href="/sign-in" as="a" />}
+          <Button label="Open the studio" variant="primary" size="sm" href="/studio" as="a" />
+        </HStack>
       </HStack>
     </div>
   );
@@ -149,7 +154,7 @@ function Hero() {
             label="Build yours free"
             variant="primary"
             size="lg"
-            href="/studio"
+            href="/studio" as="a"
             endContent={<Icon icon={ArrowRightIcon} size="sm" color="inherit" />}
           />
           <Button label="See how it works" variant="secondary" size="lg" href="#how" />
@@ -245,7 +250,7 @@ function Examples() {
                   label="Make it yours"
                   variant="secondary"
                   size="sm"
-                  href={`/studio?sample=${sample.id}`}
+                  href={`/studio?sample=${sample.id}`} as="a"
                   endContent={<Icon icon={ArrowRightIcon} size="sm" color="inherit" />}
                 />
               </HStack>
@@ -313,7 +318,7 @@ function Themes() {
                 label="Try it"
                 variant="ghost"
                 size="sm"
-                href="/studio"
+                href="/studio" as="a"
                 endContent={<Icon icon={ArrowRightIcon} size="sm" color="inherit" />}
               />
             </HStack>
@@ -402,7 +407,7 @@ function FinalCta() {
             label="Build yours free"
             variant="primary"
             size="lg"
-            href="/studio"
+            href="/studio" as="a"
             endContent={<Icon icon={ArrowRightIcon} size="sm" color="inherit" />}
           />
         </VStack>
